@@ -34,12 +34,18 @@ LaravelアプリはRender上でDockerを使ってデプロイします。
         nginx-php-fpmをベースにしたDockerfileを作成します。インストールされるPHPなどのバージョンは[こちら](https://github.com/richarvey/nginx-php-fpm)でご確認ください。Viteの実行にはnpmが必要なので、ここでnpmもインストールしています。
 
         ```conf
-        FROM richarvey/nginx-php-fpm:3.1.6
+        # 必要な npm のバージョンをインストールするため、node 環境の別のベースをあわせて使用する
+        FROM node:22.22.1-alpine AS node
 
-        # npmのインストール
-        RUN apk add --no-cache npm
+        FROM richarvey/nginx-php-fpm:latest
 
         COPY . .
+
+        # node 環境でインストールしたコマンドをコピーしてくる
+        COPY --from=node /usr/lib /usr/lib
+        COPY --from=node /usr/local/lib /usr/local/lib
+        COPY --from=node /usr/local/include /usr/local/include
+        COPY --from=node /usr/local/bin /usr/local/bin
 
         # Image config
         ENV SKIP_COMPOSER 1
@@ -83,65 +89,65 @@ LaravelアプリはRender上でDockerを使ってデプロイします。
 
         ```conf
         server {
-        # Render provisions and terminates SSL
-        listen 80;
+            # Render provisions and terminates SSL
+            listen 80;
 
-        # Make site accessible from http://localhost/
-        server_name _;
+            # Make site accessible from http://localhost/
+            server_name _;
 
-        root /var/www/html/public;
-        index index.html index.htm index.php;
+            root /var/www/html/public;
+            index index.html index.htm index.php;
 
-        # Disable sendfile as per https://docs.vagrantup.com/v2/synced-folders/virtualbox.html
-        sendfile off;
+            # Disable sendfile as per https://docs.vagrantup.com/v2/synced-folders/virtualbox.html
+            sendfile off;
 
-        # Add stdout logging
-        error_log /dev/stdout info;
-        access_log /dev/stdout;
+            # Add stdout logging
+            error_log /dev/stdout info;
+            access_log /dev/stdout;
 
-        # block access to sensitive information about git
-        location /.git {
-            deny all;
-            return 403;
-        }
+            # block access to sensitive information about git
+            location /.git {
+                deny all;
+                return 403;
+            }
 
-        add_header X-Frame-Options "SAMEORIGIN";
-        add_header X-XSS-Protection "1; mode=block";
-        add_header X-Content-Type-Options "nosniff";
+            add_header X-Frame-Options "SAMEORIGIN";
+            add_header X-XSS-Protection "1; mode=block";
+            add_header X-Content-Type-Options "nosniff";
 
-        charset utf-8;
+            charset utf-8;
 
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
-        }
+            location / {
+                try_files $uri $uri/ /index.php?$query_string;
+            }
 
-        location = /favicon.ico { access_log off; log_not_found off; }
-        location = /robots.txt  { access_log off; log_not_found off; }
+            location = /favicon.ico { access_log off; log_not_found off; }
+            location = /robots.txt  { access_log off; log_not_found off; }
 
-        error_page 404 /index.php;
+            error_page 404 /index.php;
 
-        location ~* \.(jpg|jpeg|gif|png|css|js|ico|webp|tiff|ttf|svg)$ {
-            expires 5d;
-        }
+            location ~* \.(jpg|jpeg|gif|png|css|js|ico|webp|tiff|ttf|svg)$ {
+                expires 5d;
+            }
 
-        location ~ \.php$ {
-            fastcgi_split_path_info ^(.+\.php)(/.+)$;
-            fastcgi_pass unix:/var/run/php-fpm.sock;
-            fastcgi_index index.php;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            fastcgi_param SCRIPT_NAME $fastcgi_script_name;
-            include fastcgi_params;
-        }
+            location ~ \.php$ {
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                fastcgi_pass unix:/var/run/php-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                fastcgi_param SCRIPT_NAME $fastcgi_script_name;
+                include fastcgi_params;
+            }
 
-        # deny access to . files
-        location ~ /\. {
-            log_not_found off;
-            deny all;
-        }
+            # deny access to . files
+            location ~ /\. {
+                log_not_found off;
+                deny all;
+            }
 
-        location ~ /\.(?!well-known).* {
-            deny all;
-        }
+            location ~ /\.(?!well-known).* {
+                deny all;
+            }
         }
         ```
 
@@ -150,7 +156,7 @@ LaravelアプリはRender上でDockerを使ってデプロイします。
     ```sh
     #!/usr/bin/env bash
     echo "Running composer"
-    composer global require hirak/prestissimo
+    # composer global require hirak/prestissimo
     composer install --no-dev --working-dir=/var/www/html
 
     echo "Caching config..."
