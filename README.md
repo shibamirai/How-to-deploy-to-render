@@ -42,3 +42,4 @@ SQLiteやH2Databaseの組み込みモードなど組み込み型のデータベ�
 
 - [Laravel+SQLite(+Vite)のデプロイ](Laravel+SQLite(+Vite)のデプロイ.md)
 - [SpringBoot+H2Databaseのデプロイ](SpringBoot+H2Databaseのデプロイ.md)
+- [Django+SQLiteのデプロイ](Django+SQLiteのデプロイ.md)
